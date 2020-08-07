@@ -22,7 +22,7 @@
 #define     OR      0x25
 #define     SLT     0x2A
 #define     SYSCALL 0x0C
-
+// instructions (first 6 digits)
 #define     MUL     0x1C
 #define     BEQ     0x4
 #define     BNE     0x5
@@ -32,65 +32,88 @@
 #define     ORI     0xD
 #define     LUI     0xF
 
-void processFile(FILE *toOpen, char** buffer);
-void processCommands(char** buffer, int* commandList);
-void resetBuffer(char* buffer);
+void processFile(char* buffer, int* commandList, char* fileName);
+int processCommand(char* buffer);
+bool validCommand(int command);
 
 int main(int argc, char** argv) {
 
     assert(argc == 2);
-    FILE *toOpen = fopen(argv[1], 'r');
 
-    char buffer[1000][9] = '\0';
-    processFile(toOpen, buffer);
-
+    char buffer[9] = '\0';
     int commandList[1000] = -1;
-    processCommands(buffer, commandList);
+    processFile(buffer, commandList, argv[1]);
 
-    int instruction = (argv[1][0] >> 26);
-    printf("instruction code is: %d\n", instruction);
+    // int instruction = (argv[1][0] >> 26);
+    // printf("instruction code is: %d\n", instruction);
 
-    // TODO if instruction is invalid, print error message
-    if (!validCommand(instruction)) {
-        printf("Invalid instruction code");
-    }
+    // // TODO if instruction is invalid, print error message
+    // if (!validCommand(instruction)) {
+    //     printf("Invalid instruction code");
+    // }
 
-    // initialising registers
-    int registers[32] = 0;
+    // // initialising registers
+    // int registers[32] = 0;
 
 }
 
-void processFile(FILE *toOpen, char** buffer) {
+void processFile(char* buffer, int* commandList, char* fileName) {
 
-    int toCheck = fgetc(toOpen);
-    int indexLine = 0;
-    int indexCommand = 0;
+    FILE *toOpen = fopen(fileName, 'r');
 
-    while (toCheck != EOF) {
-        if (toCheck == '\n') {
-            indexLine++;
-            indexCommand = 0;
-            toCheck = fgetc(toOpen);
+    int buffer_char = fgetc(toOpen);
+    int index = 0;
+    int indexList = 0;
+
+    while (buffer_char != EOF) {
+        if (buffer_char == '\n') {
+            int command = atoi(buffer);
+            if (!validCommand(command)) {
+                printf("%s:%d: invalid instruction code: %s\n", fileName, indexList, buffer);
+                exit(1);
+            }
+            resetBuffer(buffer);
+
+            index = 0;
+            buffer_char = fgetc(toOpen);
             continue;
         }
-        buffer[indexLine][indexCommand] = toCheck;
-        indexCommand++;
-        toCheck = fgetc(toOpen);
+        buffer[index] = buffer_char;
+        index++;
+        buffer_char = fgetc(toOpen);
     }
 
 }
 
-void processCommands(char** buffer, int* commandList) {
-
-}
-
-
 void resetBuffer(char* buffer) {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 9; i++) {
         buffer[i] = '\0';
     }
 }
 
-bool validCommand(int instruction) {
+bool validCommand(int command) {
 
+    int check6[] = {MUL, BEQ, BNE, ADDI, SLTI, ANDI, ORI, LUI};
+    int instruction = command >> 26;
+
+    for (int i = 0; i < sizeof(check6); i++) {
+        if (instruction == check6[i]) {
+            return true;
+        }
+    }
+
+    if (instruction != 0) {
+        return false;
+    }
+
+    int check11[] = {ADD, SUB, AND, OR, SLT, SYSCALL};
+    int last11 = command & MASK11;
+
+    for (int i = 0; i < sizeof(check11); i++) {
+        if (last11 == check11[i]) {
+            return true;
+        }
+    }
+
+    return false;
 }
